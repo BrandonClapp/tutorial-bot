@@ -1,16 +1,14 @@
-const Discord = require("discord.js");
-const client = new Discord.Client();
+import { Client } from "discord.js";
+const client = new Client();
+
+import { registerCommands } from "./commands";
+
 import * as dotenv from "dotenv";
 dotenv.config();
 
-client.on("ready", () => {
+client.on("ready", async () => {
   console.log(`Logged in as ${client.user.tag}!`);
-});
-
-client.on("message", (msg) => {
-  if (msg.content === "ping") {
-    msg.reply("Pong!");
-  }
+  await registerCommands(client);
 });
 
 client.login(process.env.TOKEN);
