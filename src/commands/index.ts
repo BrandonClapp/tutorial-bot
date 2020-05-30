@@ -3,7 +3,6 @@ import * as fs from "fs";
 
 export async function registerCommands(client: Client) {
   const settings = require("../../settings.json");
-  console.log("settings");
   fs.readdirSync(__dirname).forEach(async (file) => {
     if (file === "index.ts") {
       return;
@@ -11,7 +10,6 @@ export async function registerCommands(client: Client) {
 
     const cmd = require(`./${file}`).default;
     const section = settings[file.replace(".ts", "")];
-    console.log("section", section);
     await cmd(client, section);
   });
 }
