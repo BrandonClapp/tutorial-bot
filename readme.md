@@ -35,10 +35,22 @@ git checkout ep4
 npm install
 ```
 
-4. Create a `.env` file that looks similar to this, substituting in your discord bot's token. If you're not sure how to get a token, we cover this in episode 1.
+4. Create a `.env` file that looks similar to this, substituting in your discord bot's token. If you're not sure how to create the bot and get a token, we cover this in episode 1.
 
 ```
 TOKEN=EnterYourDiscordBotTokenHere
 ```
 
 The start of each video will coorespond to a branch on this repository. For example, in episode 4, you can you should be able to `git checkout ep4` to get the source code to follow along in the video.
+
+5. Ensure that the bot is invited to your Discord server. You can use the following link to invite your bot, substituting in your client id. This is also covered in episode 1.
+
+```
+https://discordapp.com/oauth2/authorize?client_id=INSERT_CLIENT_ID_HERE&scope=bot
+```
+
+6. Run the node application
+
+```
+npm run dev
+```
