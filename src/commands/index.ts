@@ -2,12 +2,14 @@ import { Client } from "discord.js";
 import * as fs from "fs";
 
 export async function registerCommands(client: Client) {
+  const settings = require("../../settings.json");
   fs.readdirSync(__dirname).forEach(async (file) => {
-    if (file === "index.ts") {
+    if (file === "index.ts" || !file.endsWith(".ts")) {
       return;
     }
 
     const cmd = require(`./${file}`).default;
-    await cmd(client);
+    const section = settings[file.replace(".ts", "")];
+    await cmd(client, section);
   });
 }

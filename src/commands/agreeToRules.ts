@@ -8,13 +8,9 @@ import {
   Role,
 } from "discord.js";
 
-const CHANNELS = {
-  rules: "714985876014235668",
-};
-
-export default async function agreeToRules(client: Client) {
+export default async function agreeToRules(client: Client, settings: any) {
   const rules: TextChannel = (await client.channels.fetch(
-    CHANNELS.rules,
+    settings.rulesChannel,
     true
   )) as TextChannel;
 
@@ -24,11 +20,11 @@ export default async function agreeToRules(client: Client) {
     Constants.Events.MESSAGE_REACTION_ADD,
     async (reaction: MessageReaction, user: User) => {
       if (
-        reaction.message.id === "714985925469536286" &&
-        reaction.emoji.name === "👍"
+        reaction.message.id === settings.ruleMessage &&
+        reaction.emoji.name === settings.emoji
       ) {
         const guestRole: Role = reaction.message.guild.roles.cache.find(
-          (r) => r.name === "guests"
+          (r) => r.name === settings.role
         );
 
         await reaction.message.guild.member(user).roles.add(guestRole);
