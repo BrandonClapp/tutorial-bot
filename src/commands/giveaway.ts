@@ -3,11 +3,11 @@ import { splitArguments } from "../utility/splitArguments";
 import { createIdentifier } from "../utility/createIdentifier";
 import { Giveaway, GiveawayRepo } from "./libs/GiveawayRepo";
 
-const repo = new GiveawayRepo();
-
 export default async function giveaway(client: Client, settings: any) {
   settings = {};
   settings.commandPrefix = "!giveaway";
+
+  GiveawayRepo.loadCache();
 
   client.on(Constants.Events.MESSAGE_CREATE, async (message: Message) => {
     if (!message.content.startsWith(settings.commandPrefix)) {
@@ -16,7 +16,7 @@ export default async function giveaway(client: Client, settings: any) {
 
     const action = message.content.split(" ")[1];
 
-    if (!["create", "cancel", "extend"].includes(action)) {
+    if (!["create", "cancel", "extend", "list"].includes(action)) {
       console.log("Invalid sub-command action", action);
       return;
     }
@@ -34,6 +34,8 @@ export default async function giveaway(client: Client, settings: any) {
       case "extend":
         console.log("extending");
         break;
+      case "list":
+        listGiveaways(actionArgs, message);
     }
   });
 }
@@ -62,5 +64,12 @@ ${winnerCount} winner(s) will be selected at ${expiration.toLocaleTimeString()}
   `);
 
   giveaway.message = reply.id;
-  await repo.save(giveaway);
+  await GiveawayRepo.save(giveaway);
+}
+
+function listGiveaways(args: string[], message: Message) {
+  const giveaways = GiveawayRepo.getAll();
+  message.channel.send(`
+  Current giveaways: ${giveaways.map((g) => g.id).join(", ")}
+  `);
 }
