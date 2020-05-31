@@ -4,7 +4,7 @@ import * as fs from "fs";
 export async function registerCommands(client: Client) {
   const settings = require("../../settings.json");
   fs.readdirSync(__dirname).forEach(async (file) => {
-    if (file === "index.ts") {
+    if (file === "index.ts" || !file.endsWith(".ts")) {
       return;
     }
 
