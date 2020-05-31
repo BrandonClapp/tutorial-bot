@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "./node_modules/typescript/bin/tsc",
+    "debug": "./node_modules/ts-node/dist/bin.js ./src",
     "dev": "nodemon ./src/index.ts"
   },
   "author": "",
