@@ -16,7 +16,7 @@ export default async function giveaway(client: Client, settings: any) {
 
     const action = message.content.split(" ")[1];
 
-    if (!["create", "cancel", "extend", "list"].includes(action)) {
+    if (!["create", "cancel", "extend", "list", "remove"].includes(action)) {
       console.log("Invalid sub-command action", action);
       return;
     }
@@ -27,6 +27,9 @@ export default async function giveaway(client: Client, settings: any) {
     switch (action) {
       case "create":
         await createGiveaway(actionArgs, message);
+        break;
+      case "remove":
+        await removeGiveaway(actionArgs, message);
         break;
       case "cancel":
         console.log("cancelling");
@@ -72,4 +75,10 @@ function listGiveaways(args: string[], message: Message) {
   message.channel.send(`
   Current giveaways: ${giveaways.map((g) => g.id).join(", ")}
   `);
+}
+
+async function removeGiveaway(args: string[], message: Message) {
+  const [id] = args;
+  await GiveawayRepo.remove(id);
+  message.channel.send("Removed giveaway " + id);
 }
