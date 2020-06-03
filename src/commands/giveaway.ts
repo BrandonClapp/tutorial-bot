@@ -1,16 +1,23 @@
-import { Client, Constants, Message } from "discord.js";
+import { Client, Constants, Message, TextChannel } from "discord.js";
 import { splitArguments } from "../utility/splitArguments";
 import { createIdentifier } from "../utility/createIdentifier";
 import { Giveaway, GiveawayRepo } from "./libs/GiveawayRepo";
+import { selectWinners } from "../utility/selectWinners";
+
+let _client: Client = undefined;
 
 export default async function giveaway(client: Client, settings: any) {
-  settings = {};
-  settings.commandPrefix = "!giveaway";
+  if (!settings.enabled) {
+    return;
+  }
 
-  GiveawayRepo.loadCache();
+  _client = client;
+
+  await GiveawayRepo.loadCache();
+  monitorGiveaways();
 
   client.on(Constants.Events.MESSAGE_CREATE, async (message: Message) => {
-    if (!message.content.startsWith(settings.commandPrefix)) {
+    if (!message.content.startsWith(settings.prefix)) {
       return;
     }
 
@@ -51,6 +58,8 @@ async function createGiveaway(args: string[], message: Message) {
     throw "Duration parameter must be a number, got " + duration;
   }
 
+  let numberWinners = parseInt(winnerCount, 10) || 1;
+
   const id = createIdentifier();
   let expiration = new Date();
   expiration.setMinutes(expiration.getMinutes() + durationMinutes);
@@ -58,27 +67,80 @@ async function createGiveaway(args: string[], message: Message) {
   const giveaway = <Giveaway>{
     id,
     expiration: expiration.getTime(),
+    title,
+    emoji,
+    numberWinners,
   };
 
   const reply = await message.channel.send(`
 ${title} (${giveaway.id})
 React with ${emoji} to enter!
-${winnerCount} winner(s) will be selected at ${expiration.toLocaleTimeString()}
+${numberWinners} winner(s) will be selected at ${expiration.toLocaleTimeString()}
   `);
 
-  giveaway.message = reply.id;
+  reply.react(emoji);
+
+  giveaway.messageId = reply.id;
+  giveaway.channelId = reply.channel.id;
   await GiveawayRepo.save(giveaway);
 }
 
 function listGiveaways(args: string[], message: Message) {
   const giveaways = GiveawayRepo.getAll();
-  message.channel.send(`
-  Current giveaways: ${giveaways.map((g) => g.id).join(", ")}
-  `);
+  const reply =
+    giveaways.length > 0
+      ? `Current giveaways: ${giveaways.map((g) => g.id).join(", ")}`
+      : "There are no active giveaways";
+  message.channel.send(reply);
 }
 
 async function removeGiveaway(args: string[], message: Message) {
   const [id] = args;
   await GiveawayRepo.remove(id);
   message.channel.send("Removed giveaway " + id);
+}
+
+function monitorGiveaways() {
+  setInterval(() => {
+    GiveawayRepo.getAll().forEach(handleGiveaway);
+  }, 2000);
+}
+
+async function handleGiveaway(giveaway: Giveaway) {
+  if (Date.now() < giveaway.expiration) {
+    return;
+  }
+
+  console.log(
+    `${giveaway.id} is expired. ${Date.now()} > ${giveaway.expiration}`
+  );
+
+  const channel = _client.channels.cache.find(
+    (c) => c.id === giveaway.channelId
+  ) as TextChannel;
+
+  const message = await channel.messages.fetch(giveaway.messageId, true);
+
+  if (!message) {
+    return GiveawayRepo.remove(giveaway.id);
+  }
+
+  const reaction = await message.reactions.cache.find(
+    (r) => r.emoji.name === giveaway.emoji
+  );
+
+  // Load users into cache, otherwise they're not present on the reaction
+  const users = await reaction.users.fetch();
+  const eligible = users
+    .filter((u) => u.id !== message.author.id)
+    .map((u) => u.id);
+
+  const winners = selectWinners(eligible, giveaway.numberWinners);
+
+  message.channel.send(
+    `${giveaway.title} giveaway has expired. Congratulations to ${winners
+      .map((uid) => `<@${uid}>`)
+      .join(", ")}!`
+  );
+  GiveawayRepo.remove(giveaway.id);
 }

@@ -5,5 +5,8 @@
     "emoji": "👍",
     "role": "guests"
   },
-  "someOtherCommand": {}
+  "giveaway": {
+    "enabled": true,
+    "prefix": "!giveaway"
+  }
 }

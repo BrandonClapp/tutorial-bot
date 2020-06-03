@@ -6,7 +6,11 @@ import { fileExists } from "../../utility/fileExists";
 export interface Giveaway {
   id: string;
   expiration: number;
-  message: string;
+  messageId: string;
+  channelId: string;
+  title: string;
+  emoji: string;
+  numberWinners: number;
 }
 
 export namespace GiveawayRepo {
