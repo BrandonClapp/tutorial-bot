@@ -1,10 +1,18 @@
-import { Client, Constants, Message, TextChannel } from "discord.js";
+import {
+  Client,
+  Constants,
+  Message,
+  TextChannel,
+  MessageEmbed,
+} from "discord.js";
 import { splitArguments } from "../utility/splitArguments";
 import { createIdentifier } from "../utility/createIdentifier";
 import { Giveaway, GiveawayRepo } from "./libs/GiveawayRepo";
 import { selectWinners } from "../utility/selectWinners";
+import { isEmptyOrSpaces } from "../utility/isEmptyOrSpaces";
 
 let _client: Client = undefined;
+let _settings: any = undefined;
 
 export default async function giveaway(client: Client, settings: any) {
   if (!settings.enabled) {
@@ -12,6 +20,7 @@ export default async function giveaway(client: Client, settings: any) {
   }
 
   _client = client;
+  _settings = settings;
 
   await GiveawayRepo.loadCache();
   monitorGiveaways();
@@ -22,8 +31,17 @@ export default async function giveaway(client: Client, settings: any) {
     }
 
     const action = message.content.split(" ")[1];
+    const availableActions = ["create", "list", "remove", "help"];
 
-    if (!["create", "cancel", "extend", "list", "remove"].includes(action)) {
+    if (!action) {
+      return message.reply(
+        `Available actions: ${availableActions
+          .map((a) => `\`${a}\``)
+          .join(", ")}`
+      );
+    }
+
+    if (!availableActions.includes(action)) {
       console.log("Invalid sub-command action", action);
       return;
     }
@@ -38,14 +56,12 @@ export default async function giveaway(client: Client, settings: any) {
       case "remove":
         await removeGiveaway(actionArgs, message);
         break;
-      case "cancel":
-        console.log("cancelling");
-        break;
-      case "extend":
-        console.log("extending");
-        break;
       case "list":
         listGiveaways(actionArgs, message);
+        break;
+      case "help":
+        giveHelp(actionArgs, message);
+        break;
     }
   });
 }
@@ -54,8 +70,14 @@ async function createGiveaway(args: string[], message: Message) {
   const [duration, title, emoji, winnerCount] = args;
 
   const durationMinutes = parseInt(duration, 10);
-  if (durationMinutes === NaN) {
-    throw "Duration parameter must be a number, got " + duration;
+  let errors =
+    isEmptyOrSpaces(title) || isEmptyOrSpaces(emoji) || durationMinutes === NaN;
+
+  if (errors) {
+    // send a message to user
+    return message.reply(
+      `\`${_settings.prefix} create <minutes:number> <title:string> <emoji> <winners?=1>\``
+    );
   }
 
   let numberWinners = parseInt(winnerCount, 10) || 1;
@@ -72,11 +94,22 @@ async function createGiveaway(args: string[], message: Message) {
     numberWinners,
   };
 
-  const reply = await message.channel.send(`
-${title} (${giveaway.id})
-React with ${emoji} to enter!
-${numberWinners} winner(s) will be selected at ${expiration.toLocaleTimeString()}
-  `);
+  const announcement = new MessageEmbed()
+    .setColor(_settings.color || "#00CC00")
+    .setTitle(`Giveaway: ${giveaway.title}`)
+    .setDescription(
+      `React with ${emoji} to enter! **${numberWinners}** ${
+        numberWinners > 1 ? "winners" : "winner"
+      } will be selected at **${expiration.toLocaleTimeString()}**.`
+    )
+    .addFields(
+      { name: "ID", value: giveaway.id, inline: true },
+      { name: "Giveaway", value: giveaway.title, inline: true },
+      { name: "Winners", value: giveaway.numberWinners, inline: true },
+      { name: "Ends at", value: expiration.toLocaleTimeString(), inline: true }
+    );
+
+  const reply = await message.channel.send(announcement);
 
   reply.react(emoji);
 
@@ -96,6 +129,9 @@ function listGiveaways(args: string[], message: Message) {
 
 async function removeGiveaway(args: string[], message: Message) {
   const [id] = args;
+  if (!id) {
+    return message.channel.send("No giveaway ID specified.");
+  }
   await GiveawayRepo.remove(id);
   message.channel.send("Removed giveaway " + id);
 }
@@ -137,10 +173,27 @@ async function handleGiveaway(giveaway: Giveaway) {
 
   const winners = selectWinners(eligible, giveaway.numberWinners);
 
-  message.channel.send(
-    `${giveaway.title} giveaway has expired. Congratulations to ${winners
-      .map((uid) => `<@${uid}>`)
-      .join(", ")}!`
-  );
+  const announcement =
+    winners.length > 0
+      ? `'${
+          giveaway.title
+        }' giveaway has ended. Congratulations to ${winners
+          .map((uid) => `<@${uid}>`)
+          .join(", ")}!`
+      : `'${giveaway.title}' giveaway ended, but no users entered the drawing. :frowning:`;
+
+  message.channel.send(announcement);
   GiveawayRepo.remove(giveaway.id);
+}
+
+// !giveaway help
+function giveHelp(args: string[], message: Message) {
+  message.reply(
+    `\`\`\`
+${_settings.prefix} help
+${_settings.prefix} list
+${_settings.prefix} create <minutes:number> <title:string> <emoji> <winners?:number=1>
+${_settings.prefix} remove <id:string>
+\`\`\``
+  );
 }
