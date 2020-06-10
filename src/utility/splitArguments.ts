@@ -1,5 +1,7 @@
 // TODO: Add Jest to unit test this with
 
+import { isEmptyOrSpaces } from "./isEmptyOrSpaces";
+
 // !giveaway create 60 "Free Steam Key" :mage: 2'
 // ['!giveaway', 'create', '60', 'Free Steam Key', ':mage:', '2']
 export function splitArguments(command: string): string[] {
@@ -34,10 +36,6 @@ export function splitArguments(command: string): string[] {
     }
   }
   return args;
-}
-
-function isEmptyOrSpaces(str) {
-  return str === null || str.match(/^ *$/) !== null;
 }
 
 //   const args = split('!giveaway create 60 "Free Steam Key" 👍 2');
